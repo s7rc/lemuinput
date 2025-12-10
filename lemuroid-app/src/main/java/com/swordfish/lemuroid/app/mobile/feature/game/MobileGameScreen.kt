@@ -57,7 +57,7 @@ import com.swordfish.touchinput.controller.R
 import com.swordfish.touchinput.radial.LemuroidPadTheme
 import com.swordfish.touchinput.radial.LocalLemuroidPadTheme
 import com.swordfish.touchinput.radial.controls.LocalButtonBoundsTracker
-import com.swordfish.touchinput.radial.customization.TouchControllerCustomizationOverlay
+import com.swordfish.touchinput.radial.customization.SmoothButtonCustomizationOverlay
 import com.swordfish.touchinput.radial.customization.rememberButtonBoundsTracker
 import com.swordfish.touchinput.radial.sensors.TiltConfiguration
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
@@ -229,7 +229,7 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
         
         // Customization overlay MUST be outside PadKit to be on top
         if (showEditControls.value && touchControllerSettings != null && buttonBoundsTracker != null) {
-            TouchControllerCustomizationOverlay(
+            SmoothButtonCustomizationOverlay(
                 settings = touchControllerSettings,
                 buttonBounds = buttonBoundsTracker.getBounds(),
                 screenWidth = constraints.maxWidth,

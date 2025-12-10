@@ -45,6 +45,9 @@ dependencies {
 
     api(deps.libs.padkit)
     api(deps.libs.collectionsImmutable)
+    
+    // Multi-touch gesture detection for smooth control customization
+    implementation("com.dinuscxj:multitouchgesturedetector:1.0.0")
 
     implementation(kotlin(deps.libs.kotlin.stdlib))
 
