@@ -2,9 +2,8 @@ package com.swordfish.touchinput.radial.customization
 
 import android.annotation.SuppressLint
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -35,17 +34,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.math.MathUtils
-import com.dinuscxj.gesture.MultiTouchGestureDetector
-import com.swordfish.lemuroid.common.graphics.GraphicsUtils
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
+import kotlin.math.abs
 
 /**
- * Smooth per-button customization using MultiTouchGestureDetector.
- * 
- * Usage:
- * - Tap a button to select it
- * - Pinch to scale selected button  
- * - Drag to move selected button
+ * Smooth per-button customization using native Android gestures.
  */
 @SuppressLint("ClickableViewAccessibility")
 @Composable
@@ -62,7 +55,6 @@ fun SmoothButtonCustomizationOverlay(
     var currentSettings by remember { mutableStateOf(settings) }
     
     val context = LocalContext.current
-    val maxMargins = GraphicsUtils.convertDpToPixel(TouchControllerSettingsManager.MAX_MARGINS, context)
     
     // Find button at touch position
     fun findButtonAt(x: Float, y: Float): String? {
@@ -95,13 +87,13 @@ fun SmoothButtonCustomizationOverlay(
     
     // Update selected button's scale
     fun updateButtonScale(scaleFactor: Float) {
-selectedButtonId?.let { buttonId ->
+        selectedButtonId?.let { buttonId ->
             val currentOverride = currentSettings.buttonOverrides[buttonId] ?: 
                 TouchControllerSettingsManager.ButtonOverride()
             
             val currentScale = currentOverride.scale ?: currentSettings.scale
             val newScale = MathUtils.clamp(
-                currentScale + (scaleFactor - 1f) * 0.5f,
+                currentScale * scaleFactor,
                 0.3f,
                 3.0f
             )
@@ -136,39 +128,63 @@ selectedButtonId?.let { buttonId ->
     }
     
     Box(modifier = modifier.fillMaxSize()) {
-        // Gesture detection layer using AndroidView for smooth performance
+        // Native gesture detection layer
         AndroidView(
-            factory = { context ->
-                android.view.View(context).apply {
-                    setBackgroundColor(android.graphics.Color.parseColor("#4D000000")) // 30% black
+            factory = { ctx ->
+                android.view.View(ctx).apply {
+                    setBackgroundColor(android.graphics.Color.parseColor("#4D000000"))
                     
-                    val gestureDetector = MultiTouchGestureDetector(
-                        context,
-                        object : MultiTouchGestureDetector.SimpleOnMultiTouchGestureListener() {
-                            
-                            override fun onScale(detector: MultiTouchGestureDetector) {
-                                if (selectedButtonId != null) {
-                                    updateButtonScale(detector.scale)
-                                }
+                    var lastX = 0f
+                    var lastY = 0f
+                    var pointerCount = 0
+                    
+                    val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                        override fun onScale(detector: ScaleGestureDetector): Boolean {
+                            if (selectedButtonId != null) {
+                                updateButtonScale(detector.scaleFactor)
                             }
-                            
-                            override fun onMove(detector: MultiTouchGestureDetector) {
-                                if (selectedButtonId != null) {
-                                    updateButtonPosition(detector.moveX, -detector.moveY)
-                                }
-                            }
+                            return true
                         }
-                    )
+                    })
                     
                     setOnTouchListener { _, event ->
+                        scaleDetector.onTouchEvent(event)
+                        
                         when (event.actionMasked) {
                             MotionEvent.ACTION_DOWN -> {
-                                // Tap to select button
-                                val buttonId = findButtonAt(event.x, event.y)
-                                selectedButtonId = buttonId
+                                lastX = event.x
+                                lastY = event.y
+                                pointerCount = 1
+                                // Tap to select
+                                selectedButtonId = findButtonAt(event.x, event.y)
+                            }
+                            
+                            MotionEvent.ACTION_POINTER_DOWN -> {
+                                pointerCount = event.pointerCount
+                            }
+                            
+                            MotionEvent.ACTION_MOVE -> {
+                                if (selectedButtonId != null && pointerCount == 1) {
+                                    // Single finger drag = move
+                                    val deltaX = event.x - lastX
+                                    val deltaY = event.y - lastY
+                                    
+                                    if (abs(deltaX) > 1f || abs(deltaY) > 1f) {
+                                        updateButtonPosition(deltaX, deltaY)
+                                        lastX = event.x
+                                        lastY = event.y
+                                    }
+                                }
+                            }
+                            
+                            MotionEvent.ACTION_POINTER_UP -> {
+                                pointerCount = event.pointerCount - 1
+                            }
+                            
+                            MotionEvent.ACTION_UP -> {
+                                pointerCount = 0
                             }
                         }
-                        gestureDetector.onTouchEvent(event)
                         true
                     }
                 }
@@ -176,13 +192,12 @@ selectedButtonId?.let { buttonId ->
             modifier = Modifier.fillMaxSize()
         )
         
-        // Selection indicator overlay
+        // Selection indicator
         selectedButtonId?.let { buttonId ->
             buttonBounds[buttonId]?.let { rect ->
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val path = Path().apply { addRect(rect) }
                     
-                    // Dashed border
                     drawPath(
                         path = path,
                         color = Color(0xFF00BCD4),
@@ -193,7 +208,6 @@ selectedButtonId?.let { buttonId ->
                         )
                     )
                     
-                    // Corner handles
                     val handleSize = 12.dp.toPx()
                     listOf(rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight).forEach { corner ->
                         drawCircle(color = Color(0xFF00BCD4), radius = handleSize / 2, center = corner)
@@ -201,7 +215,6 @@ selectedButtonId?.let { buttonId ->
                     }
                 }
                 
-                // Info card
                 val override = currentSettings.buttonOverrides[buttonId]
                 val currentScale = override?.scale ?: currentSettings.scale
                 
@@ -218,7 +231,6 @@ selectedButtonId?.let { buttonId ->
             }
         }
         
-        // Hint when no button selected
         if (selectedButtonId == null) {
             Box(modifier = Modifier.align(Alignment.Center).padding(16.dp)) {
                 Card {
@@ -232,7 +244,6 @@ selectedButtonId?.let { buttonId ->
             }
         }
         
-        // Top control bar
         Card(
             modifier = Modifier
                 .align(Alignment.TopCenter)
