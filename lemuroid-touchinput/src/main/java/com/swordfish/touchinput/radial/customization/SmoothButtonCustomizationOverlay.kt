@@ -1,20 +1,23 @@
 package com.swordfish.touchinput.radial.customization
 
-import android.annotation.SuppressLint
-import android.view.MotionEvent
-import android.view.ScaleGestureDetector
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,18 +32,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.math.MathUtils
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
-import kotlin.math.abs
 
 /**
- * Smooth per-button customization using native Android gestures.
+ * SIMPLE slider-based per-button customization.
+ * Tap a button to select it, then use sliders to adjust.
  */
-@SuppressLint("ClickableViewAccessibility")
 @Composable
 fun SmoothButtonCustomizationOverlay(
     settings: TouchControllerSettingsManager.Settings,
@@ -52,220 +51,179 @@ fun SmoothButtonCustomizationOverlay(
     modifier: Modifier = Modifier,
 ) {
     var selectedButtonId by remember { mutableStateOf<String?>(null) }
-    var currentSettings by remember { mutableStateOf(settings) }
     
-    val context = LocalContext.current
+    val currentOverride = selectedButtonId?.let { settings.buttonOverrides[it] }
+    val currentScale = currentOverride?.scale ?: settings.scale
+    val currentOffsetX = currentOverride?.offsetX ?: 0f
+    val currentOffsetY = currentOverride?.offsetY ?: 0f
     
-    // Find button at touch position
-    fun findButtonAt(x: Float, y: Float): String? {
-        return buttonBounds.entries.findLast { (_, rect) ->
-            rect.contains(Offset(x, y))
-        }?.key
-    }
-    
-    // Update selected button's position
-    fun updateButtonPosition(deltaX: Float, deltaY: Float) {
+    fun updateButtonScale(scale: Float) {
         selectedButtonId?.let { buttonId ->
-            val currentOverride = currentSettings.buttonOverrides[buttonId] ?: 
-                TouchControllerSettingsManager.ButtonOverride()
-            
-            val normalizedDeltaX = deltaX / (screenWidth / 2f)
-            val normalizedDeltaY = deltaY / (screenHeight / 2f)
-            
-            val newOverride = currentOverride.copy(
-                offsetX = MathUtils.clamp(currentOverride.offsetX + normalizedDeltaX, -2f, 2f),
-                offsetY = MathUtils.clamp(currentOverride.offsetY + normalizedDeltaY, -2f, 2f)
-            )
-            
-            val newOverrides = currentSettings.buttonOverrides.toMutableMap()
+            val override = settings.buttonOverrides[buttonId] ?: TouchControllerSettingsManager.ButtonOverride()
+            val newOverride = override.copy(scale = scale)
+            val newOverrides = settings.buttonOverrides.toMutableMap()
             newOverrides[buttonId] = newOverride
-            val newSettings = currentSettings.copy(buttonOverrides = newOverrides)
-            currentSettings = newSettings
-            onSettingsChange(newSettings)
+            onSettingsChange(settings.copy(buttonOverrides = newOverrides))
         }
     }
     
-    // Update selected button's scale
-    fun updateButtonScale(scaleFactor: Float) {
+    fun updateButtonOffsetX(offset: Float) {
         selectedButtonId?.let { buttonId ->
-            val currentOverride = currentSettings.buttonOverrides[buttonId] ?: 
-                TouchControllerSettingsManager.ButtonOverride()
-            
-            val currentScale = currentOverride.scale ?: currentSettings.scale
-            val newScale = MathUtils.clamp(
-                currentScale * scaleFactor,
-                0.3f,
-                3.0f
-            )
-            
-            val newOverride = currentOverride.copy(scale = newScale)
-            val newOverrides = currentSettings.buttonOverrides.toMutableMap()
+            val override = settings.buttonOverrides[buttonId] ?: TouchControllerSettingsManager.ButtonOverride()
+            val newOverride = override.copy(offsetX = offset)
+            val newOverrides = settings.buttonOverrides.toMutableMap()
             newOverrides[buttonId] = newOverride
-            val newSettings = currentSettings.copy(buttonOverrides = newOverrides)
-            currentSettings = newSettings
-            onSettingsChange(newSettings)
+            onSettingsChange(settings.copy(buttonOverrides = newOverrides))
         }
     }
     
-    // Reset selected button
+    fun updateButtonOffsetY(offset: Float) {
+        selectedButtonId?.let { buttonId ->
+            val override = settings.buttonOverrides[buttonId] ?: TouchControllerSettingsManager.ButtonOverride()
+            val newOverride = override.copy(offsetY = offset)
+            val newOverrides = settings.buttonOverrides.toMutableMap()
+            newOverrides[buttonId] = newOverride
+            onSettingsChange(settings.copy(buttonOverrides = newOverrides))
+        }
+    }
+    
     fun resetSelectedButton() {
         selectedButtonId?.let { buttonId ->
-            val newOverrides = currentSettings.buttonOverrides.toMutableMap()
+            val newOverrides = settings.buttonOverrides.toMutableMap()
             newOverrides.remove(buttonId)
-            val newSettings = currentSettings.copy(buttonOverrides = newOverrides)
-            currentSettings = newSettings
-            onSettingsChange(newSettings)
-            selectedButtonId = null
+            onSettingsChange(settings.copy(buttonOverrides = newOverrides))
         }
     }
     
-    // Reset all buttons
     fun resetAllButtons() {
-        val newSettings = currentSettings.copy(buttonOverrides = emptyMap())
-        currentSettings = newSettings
-        onSettingsChange(newSettings)
+        onSettingsChange(settings.copy(buttonOverrides = emptyMap()))
         selectedButtonId = null
     }
     
     Box(modifier = modifier.fillMaxSize()) {
-        // Native gesture detection layer
-        AndroidView(
-            factory = { ctx ->
-                android.view.View(ctx).apply {
-                    setBackgroundColor(android.graphics.Color.parseColor("#4D000000"))
-                    
-                    var lastX = 0f
-                    var lastY = 0f
-                    var pointerCount = 0
-                    
-                    val scaleDetector = ScaleGestureDetector(ctx, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-                        override fun onScale(detector: ScaleGestureDetector): Boolean {
-                            if (selectedButtonId != null) {
-                                updateButtonScale(detector.scaleFactor)
-                            }
-                            return true
-                        }
-                    })
-                    
-                    setOnTouchListener { _, event ->
-                        scaleDetector.onTouchEvent(event)
+        // Clickable overlay to select buttons
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f))
+                .clickable(enabled = false) { }
+        ) {
+            // Show selection indicator
+            selectedButtonId?.let { buttonId ->
+                buttonBounds[buttonId]?.let { rect ->
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val path = Path().apply { addRect(rect) }
+                        drawPath(
+                            path = path,
+                            color = Color(0xFF00BCD4),
+                            style = Stroke(
+                                width = 4.dp.toPx(),
+                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
+                                cap = StrokeCap.Round
+                            )
+                        )
                         
-                        when (event.actionMasked) {
-                            MotionEvent.ACTION_DOWN -> {
-                                lastX = event.x
-                                lastY = event.y
-                                pointerCount = 1
-                                // Tap to select
-                                selectedButtonId = findButtonAt(event.x, event.y)
-                            }
-                            
-                            MotionEvent.ACTION_POINTER_DOWN -> {
-                                pointerCount = event.pointerCount
-                            }
-                            
-                            MotionEvent.ACTION_MOVE -> {
-                                if (selectedButtonId != null && pointerCount == 1) {
-                                    // Single finger drag = move
-                                    val deltaX = event.x - lastX
-                                    val deltaY = event.y - lastY
-                                    
-                                    if (abs(deltaX) > 1f || abs(deltaY) > 1f) {
-                                        updateButtonPosition(deltaX, deltaY)
-                                        lastX = event.x
-                                        lastY = event.y
-                                    }
-                                }
-                            }
-                            
-                            MotionEvent.ACTION_POINTER_UP -> {
-                                pointerCount = event.pointerCount - 1
-                            }
-                            
-                            MotionEvent.ACTION_UP -> {
-                                pointerCount = 0
-                            }
+                        val handleSize = 12.dp.toPx()
+                        listOf(rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight).forEach { corner ->
+                            drawCircle(color = Color(0xFF00BCD4), radius = handleSize / 2, center = corner)
+                            drawCircle(color = Color.White, radius = (handleSize / 2) - 2.dp.toPx(), center = corner)
                         }
-                        true
-                    }
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
-        
-        // Selection indicator
-        selectedButtonId?.let { buttonId ->
-            buttonBounds[buttonId]?.let { rect ->
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val path = Path().apply { addRect(rect) }
-                    
-                    drawPath(
-                        path = path,
-                        color = Color(0xFF00BCD4),
-                        style = Stroke(
-                            width = 4.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
-                            cap = StrokeCap.Round
-                        )
-                    )
-                    
-                    val handleSize = 12.dp.toPx()
-                    listOf(rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight).forEach { corner ->
-                        drawCircle(color = Color(0xFF00BCD4), radius = handleSize / 2, center = corner)
-                        drawCircle(color = Color.White, radius = (handleSize / 2) - 2.dp.toPx(), center = corner)
-                    }
-                }
-                
-                val override = currentSettings.buttonOverrides[buttonId]
-                val currentScale = override?.scale ?: currentSettings.scale
-                
-                Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
-                    Card {
-                        Text(
-                            text = "Scale: ${String.format("%.2f", currentScale)}x\nPinch to resize • Drag to move",
-                            modifier = Modifier.padding(12.dp),
-                            fontSize = 14.sp,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
                     }
                 }
             }
         }
         
-        if (selectedButtonId == null) {
-            Box(modifier = Modifier.align(Alignment.Center).padding(16.dp)) {
-                Card {
-                    Text(
-                        text = "Tap any button to customize\n\nPinch to resize\nDrag to move",
-                        modifier = Modifier.padding(16.dp),
-                        fontSize = 16.sp,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-        
+        // Control panel
         Card(
             modifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .wrapContentHeight()
                 .padding(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                TextButton(onClick = { resetSelectedButton() }, enabled = selectedButtonId != null) {
-                    Text("Reset Button")
+                if (selectedButtonId == null) {
+                    Text(
+                        "Tap any button to customize it",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 16.dp)
+                    )
+                } else {
+                    Text(
+                        "Adjust Selected Button",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Scale slider
+                    Text("Scale: ${String.format("%.2f", currentScale)}x")
+                    Slider(
+                        value = currentScale,
+                        onValueChange = { updateButtonScale(it) },
+                        valueRange = 0.3f..3.0f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Horizontal position slider
+                    Text("Horizontal: ${String.format("%.2f", currentOffsetX)}")
+                    Slider(
+                        value = currentOffsetX,
+                        onValueChange = { updateButtonOffsetX(it) },
+                        valueRange = -2f..2f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Vertical position slider
+                    Text("Vertical: ${String.format("%.2f", currentOffsetY)}")
+                    Slider(
+                        value = currentOffsetY,
+                        onValueChange = { updateButtonOffsetY(it) },
+                        valueRange = -2f..2f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                TextButton(onClick = { resetAllButtons() }) {
-                    Text("Reset All")
-                }
-                TextButton(onClick = onDone) {
-                    Text("Done")
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = { resetSelectedButton() },
+                        enabled = selectedButtonId != null
+                    ) {
+                        Text("Reset Button")
+                    }
+                    
+                    Button(onClick = { resetAllButtons() }) {
+                        Text("Reset All")
+                    }
+                    
+                    Button(onClick = onDone) {
+                        Text("Done")
+                    }
                 }
             }
+        }
+        
+        // Tap detection for button selection
+        buttonBounds.forEach { (buttonId, rect) ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable {
+                        selectedButtonId = buttonId
+                    }
+            )
         }
     }
 }
