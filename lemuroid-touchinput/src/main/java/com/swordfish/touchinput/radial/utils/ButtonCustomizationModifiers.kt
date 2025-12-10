@@ -36,12 +36,8 @@ fun Modifier.applyButtonOverride(
  * This identifier is used as the key in buttonOverrides map.
  */
 fun Id.toButtonIdentifier(): String {
-    return when (this) {
-        is Id.Key -> "button_${this.keyCode}"
-        is Id.DiscreteDirection -> "dpad_${this.directionId}"
-        is Id.ContinuousDirection -> "analog_${this.directionId}"
-        else -> "unknown_${this.hashCode()}"
-    }
+    // Use the Id's string representation which includes its unique identifier
+    return "control_${this.hashCode()}"
 }
 
 /**

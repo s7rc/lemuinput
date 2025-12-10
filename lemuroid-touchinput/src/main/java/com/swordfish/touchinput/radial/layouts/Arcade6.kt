@@ -35,7 +35,7 @@ fun PadKitScope.Arcade6Left(
         },
         secondaryDials = {
             SecondaryButtonCoin(settings)
-            SecondaryButtonStart(position = 1)
+            SecondaryButtonStart(position = 1, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
         },
     )
@@ -70,10 +70,12 @@ fun PadKitScope.Arcade6Right(
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(90f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_L1),
+                settings = settings,
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(60f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_R1),
+                settings = settings,
             )
             SecondaryButtonMenu(settings)
         },
