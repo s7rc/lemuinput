@@ -56,6 +56,9 @@ import com.swordfish.lemuroid.lib.controller.ControllerConfig
 import com.swordfish.touchinput.controller.R
 import com.swordfish.touchinput.radial.LemuroidPadTheme
 import com.swordfish.touchinput.radial.LocalLemuroidPadTheme
+import com.swordfish.touchinput.radial.controls.LocalButtonBoundsTracker
+import com.swordfish.touchinput.radial.customization.TouchControllerCustomizationOverlay
+import com.swordfish.touchinput.radial.customization.rememberButtonBoundsTracker
 import com.swordfish.touchinput.radial.sensors.TiltConfiguration
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import com.swordfish.touchinput.radial.ui.GlassSurface
@@ -85,6 +88,16 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
             viewModel
                 .getTouchControlsSettings(LocalDensity.current, WindowInsets.displayCutout)
                 .collectAsState(null)
+        
+        // Track if edit mode is active
+        val showEditControls = viewModel.isEditControlShown().collectAsState(false)
+        
+        // Create button bounds tracker only when in edit mode
+        val buttonBoundsTracker = if (showEditControls.value) {
+            rememberButtonBoundsTracker()
+        } else {
+            null
+        }
 
         val touchControllerSettings = touchControllerSettingsState.value
         val currentControllerConfig = controllerConfigState.value
@@ -170,7 +183,10 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                         touchControlsVisibleState.value
 
                 if (isVisible) {
-                    CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
+                    CompositionLocalProvider(
+                        LocalLemuroidPadTheme provides LemuroidPadTheme(),
+                        LocalButtonBoundsTracker provides buttonBoundsTracker
+                    ) {
                         if (!isLandscape) {
                             PadContainer(
                                 modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
@@ -201,6 +217,19 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                             touchControllerSettings = touchControllerSettings,
                             viewModel = viewModel,
                         )
+                        
+                        // Show customization overlay when in edit mode
+                        if (showEditControls.value && buttonBoundsTracker != null) {
+                            TouchControllerCustomizationOverlay(
+                                settings = touchControllerSettings,
+                                buttonBounds = buttonBoundsTracker.getBounds(),
+                                screenWidth = constraints.maxWidth,
+                                screenHeight = constraints.maxHeight,
+                                onSettingsChange = { viewModel.updateTouchControllerSettings(it) },
+                                onDone = { viewModel.showEditControls(false) },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                 }
             }
@@ -251,115 +280,7 @@ private fun GameScreenRunningCentralMenu(
             animationDurationMillis = MENU_LOADING_ANIMATION_MILLIS,
             icon = R.drawable.button_menu,
         )
-        MenuEditTouchControls(viewModel, controllerConfig, touchControllerSettings)
     }
 }
 
-@Composable
-private fun MenuEditTouchControls(
-    viewModel: BaseGameScreenViewModel,
-    controllerConfig: ControllerConfig,
-    touchControllerSettings: TouchControllerSettingsManager.Settings,
-) {
-    val showEditControls = viewModel.isEditControlShown().collectAsState(false)
-    if (!showEditControls.value) return
 
-    Dialog(onDismissRequest = { viewModel.showEditControls(false) }) {
-        Card(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight()
-                        .padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                MenuEditTouchControlRow(Icons.Default.OpenInFull, "Scale", 0f) {
-                    Slider(
-                        value = touchControllerSettings.scale,
-                        onValueChange = {
-                            viewModel.updateTouchControllerSettings(
-                                touchControllerSettings.copy(scale = it),
-                            )
-                        },
-                    )
-                }
-                MenuEditTouchControlRow(Icons.Default.Height, "Horizontal Margin", 90f) {
-                    Slider(
-                        value = touchControllerSettings.marginX,
-                        onValueChange = {
-                            viewModel.updateTouchControllerSettings(
-                                touchControllerSettings.copy(marginX = it),
-                            )
-                        },
-                    )
-                }
-                MenuEditTouchControlRow(Icons.Default.Height, "Vertical Margin", 0f) {
-                    Slider(
-                        value = touchControllerSettings.marginY,
-                        onValueChange = {
-                            viewModel.updateTouchControllerSettings(
-                                touchControllerSettings.copy(marginY = it),
-                            )
-                        },
-                    )
-                }
-                if (controllerConfig.allowTouchRotation) {
-                    MenuEditTouchControlRow(Icons.Default.RotateLeft, "Rotate", 0f) {
-                        Slider(
-                            value = touchControllerSettings.rotation,
-                            onValueChange = {
-                                viewModel.updateTouchControllerSettings(
-                                    touchControllerSettings.copy(rotation = it),
-                                )
-                            },
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    TextButton(
-                        onClick = { viewModel.resetTouchControls() },
-                        modifier = Modifier.padding(8.dp),
-                    ) {
-                        Text(text = stringResource(R.string.touch_customize_button_reset))
-                    }
-                    TextButton(
-                        onClick = { viewModel.showEditControls(false) },
-                        modifier = Modifier.padding(8.dp),
-                    ) {
-                        Text(text = stringResource(R.string.touch_customize_button_done))
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MenuEditTouchControlRow(
-    icon: ImageVector,
-    label: String,
-    rotation: Float,
-    slider: @Composable () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            modifier = Modifier.rotate(rotation),
-            imageVector = icon,
-            contentDescription = label,
-        )
-        slider()
-    }
-}
