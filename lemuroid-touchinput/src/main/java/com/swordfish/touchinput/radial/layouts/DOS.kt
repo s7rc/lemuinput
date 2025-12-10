@@ -37,7 +37,7 @@ fun PadKitScope.DOSLeft(
         secondaryDials = {
             SecondaryButtonL1(settings)
             SecondaryButtonL2(settings)
-            SecondaryButtonSelect(position = 2)
+            SecondaryButtonSelect(position = 2, settings = settings)
             SecondaryAnalogLeft()
             LemuroidControlButton(
                 modifier =
@@ -46,6 +46,7 @@ fun PadKitScope.DOSLeft(
                     ),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_THUMBL),
                 icon = R.drawable.button_keyboard,
+                settings = settings,
             )
         },
     )
@@ -80,7 +81,7 @@ fun PadKitScope.DOSRight(
         secondaryDials = {
             SecondaryButtonR1(settings)
             SecondaryButtonR2(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 2, settings = settings)
             SecondaryAnalogRight()
             SecondaryButtonMenu(settings)
         },

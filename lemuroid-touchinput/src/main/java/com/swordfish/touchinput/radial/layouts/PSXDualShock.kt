@@ -37,7 +37,7 @@ fun PadKitScope.PSXDualShockLeft(
         secondaryDials = {
             SecondaryButtonL1(settings)
             SecondaryButtonL2(settings)
-            SecondaryButtonSelect(position = 2)
+            SecondaryButtonSelect(position = 1, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
             SecondaryAnalogLeft()
         },
@@ -93,7 +93,7 @@ fun PadKitScope.PSXDualShockRight(
         secondaryDials = {
             SecondaryButtonR1(settings)
             SecondaryButtonR2(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 1, settings = settings)
             SecondaryAnalogRight()
             SecondaryButtonMenu(settings)
         },

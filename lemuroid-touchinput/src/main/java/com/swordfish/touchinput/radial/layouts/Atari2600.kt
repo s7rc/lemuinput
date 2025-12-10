@@ -33,11 +33,13 @@ fun PadKitScope.Atari2600Left(
                 modifier = Modifier.radialPosition(120f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_L1),
                 label = "DIFF.A",
+                settings = settings,
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(60f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_L2),
                 label = "DIFF.B",
+                settings = settings,
             )
             SecondaryButtonMenuPlaceholder(settings)
         },
@@ -66,11 +68,13 @@ fun PadKitScope.Atari2600Right(
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(60f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_START),
+                settings = settings,
                 label = "RESET",
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(120f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_SELECT),
+                settings = settings,
                 label = "SELECT",
             )
             SecondaryButtonMenu(settings)

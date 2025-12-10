@@ -35,7 +35,7 @@ fun PadKitScope.PSXLeft(
         secondaryDials = {
             SecondaryButtonL1(settings)
             SecondaryButtonL2(settings)
-            SecondaryButtonSelect(position = 2)
+            SecondaryButtonSelect(position = 1, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
         },
     )
@@ -90,7 +90,7 @@ fun PadKitScope.PSXRight(
         secondaryDials = {
             SecondaryButtonR1(settings)
             SecondaryButtonR2(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 1, settings = settings)
             SecondaryButtonMenu(settings)
         },
     )

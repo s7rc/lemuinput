@@ -31,11 +31,13 @@ fun PadKitScope.LynxLeft(
                 modifier = Modifier.radialPosition(120f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_L1),
                 label = "OPTION 1",
+                settings = settings,
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(-120f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_R1),
                 label = "OPTION 2",
+                settings = settings,
             )
         },
     )

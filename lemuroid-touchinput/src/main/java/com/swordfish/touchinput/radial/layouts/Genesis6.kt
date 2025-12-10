@@ -32,8 +32,8 @@ fun PadKitScope.Genesis6Left(
         modifier = modifier,
         primaryDial = { LemuroidControlCross(id = Id.DiscreteDirection(ComposeTouchLayouts.MOTION_SOURCE_DPAD)) },
         secondaryDials = {
-            SecondaryButtonSelect(position = 0)
-            SecondaryButtonStart(position = 1)
+            SecondaryButtonSelect(position = 0, settings = settings)
+            SecondaryButtonStart(position = 1, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
         },
     )
@@ -69,11 +69,13 @@ fun PadKitScope.Genesis6Right(
                 modifier = Modifier.radialPosition(60f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_A),
                 label = "C",
+                settings = settings,
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(90f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_R1),
                 label = "Z",
+                settings = settings,
             )
             SecondaryButtonMenu(settings)
         },

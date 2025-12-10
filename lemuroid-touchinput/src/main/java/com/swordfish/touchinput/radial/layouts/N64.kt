@@ -36,8 +36,9 @@ fun PadKitScope.N64Left(
             SecondaryButtonL(settings)
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(60f),
-                id = Id.Key(KeyEvent.KEYCODE_BUTTON_L2),
-                label = "Z",
+                id = Id.Key(KeyEvent.KEYCODE_BUTTON_R2),
+                label = "C BUTTONS",
+                settings = settings,
             )
             SecondaryButtonMenuPlaceholder(settings)
         },
@@ -71,7 +72,7 @@ fun PadKitScope.N64Right(
         },
         secondaryDials = {
             SecondaryButtonR(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 1, settings = settings)
             LemuroidControlCross(
                 modifier =
                     Modifier

@@ -33,7 +33,7 @@ fun PadKitScope.Nintendo3DSLeft(
         primaryDial = { LemuroidControlCross(id = Id.DiscreteDirection(ComposeTouchLayouts.MOTION_SOURCE_DPAD)) },
         secondaryDials = {
             SecondaryButtonL(settings)
-            SecondaryButtonSelect(position = 2)
+            SecondaryButtonSelect(position = 1, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
             SecondaryAnalogLeft()
         },
@@ -68,7 +68,7 @@ fun PadKitScope.Nintendo3DSRight(
         },
         secondaryDials = {
             SecondaryButtonR(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 1, settings = settings)
             Box(
                 modifier =
                     Modifier

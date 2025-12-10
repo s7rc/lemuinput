@@ -35,17 +35,19 @@ fun PadKitScope.MelonDSLeft(
         primaryDial = { LemuroidControlCross(id = Id.DiscreteDirection(ComposeTouchLayouts.MOTION_SOURCE_DPAD)) },
         secondaryDials = {
             SecondaryButtonL(settings)
-            SecondaryButtonSelect(position = 2)
+            SecondaryButtonSelect(position = 2, settings = settings)
             SecondaryButtonMenuPlaceholder(settings)
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(-120f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_L2),
                 icon = R.drawable.button_mic,
+                settings = settings,
             )
             LemuroidControlButton(
                 modifier = Modifier.radialPosition(-60f),
                 id = Id.Key(KeyEvent.KEYCODE_BUTTON_THUMBL),
                 icon = R.drawable.button_close_screen,
+                settings = settings,
             )
         },
     )
@@ -79,7 +81,7 @@ fun PadKitScope.MelonDSRight(
         },
         secondaryDials = {
             SecondaryButtonR(settings)
-            SecondaryButtonStart(position = 2)
+            SecondaryButtonStart(position = 2, settings = settings)
             SecondaryButtonMenu(settings)
             Box(modifier = Modifier.fillMaxSize().radialPosition(-120f))
         },
