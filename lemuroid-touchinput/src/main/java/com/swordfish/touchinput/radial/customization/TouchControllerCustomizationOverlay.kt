@@ -36,14 +36,6 @@ import androidx.compose.ui.unit.sp
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import kotlin.math.abs
 
-/**
- * Interactive overlay for customizing individual touch controller buttons.
- * 
- * Gestures:
- * - Tap: Select button
- * - Long press + drag: Move selected button
- * - Vertical swipe: Resize selected button (up = larger, down = smaller)
- */
 @Composable
 fun TouchControllerCustomizationOverlay(
     settings: TouchControllerSettingsManager.Settings,
@@ -56,14 +48,13 @@ fun TouchControllerCustomizationOverlay(
 ) {
     var selectedButtonId by remember { mutableStateOf<String?>(null) }
     var isDragging by remember { mutableStateOf(false) }
-    var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
+    var isResizing by remember { mutableStateOf(false) }
     var longPressDetected by remember { mutableStateOf(false) }
-
-    val density = LocalDensity.current
-
-    // Convert screen coordinates to normalized coordinates (-1.0 to 1.0)
-    fun toNormalizedX(px: Float): Float = (px / screenWidth) * 2f - 1f
-    fun toNormalizedY(px: Float): Float = (px / screenHeight) * 2f - 1f
+    
+    // Accumulate drag offset locally to avoid recomposition glitches
+    var accumulatedOffsetX by remember { mutableStateOf(0f) }
+    var accumulatedOffsetY by remember { mutableStateOf(0f) }
+    var accumulatedScale by remember { mutableStateOf(0f) }
 
     // Find which button was tapped
     fun findButtonAt(offset: Offset): String? {
@@ -72,15 +63,16 @@ fun TouchControllerCustomizationOverlay(
         }?.key
     }
 
-    // Update button position
-    fun updateButtonPosition(buttonId: String, dragAmount: Offset) {
+    // Save position changes to settings
+    fun savePosition(buttonId: String) {
+        if (accumulatedOffsetX == 0f && accumulatedOffsetY == 0f) return
+        
         val currentOverride = settings.buttonOverrides[buttonId] ?: 
             TouchControllerSettingsManager.ButtonOverride()
         
-        // Convert drag pixels directly to normalized offset
-        // Screen width maps to -1.0 to 1.0, so divide by half width
-        val deltaX = dragAmount.x / (screenWidth / 2f)
-        val deltaY = dragAmount.y / (screenHeight / 2f)
+        // Convert pixels to normalized (-1.0 to 1.0 range)
+        val deltaX = accumulatedOffsetX / (screenWidth / 2f)
+        val deltaY = accumulatedOffsetY / (screenHeight / 2f)
         
         val newOverride = currentOverride.copy(
             offsetX = (currentOverride.offsetX + deltaX).coerceIn(-2f, 2f),
@@ -90,22 +82,29 @@ fun TouchControllerCustomizationOverlay(
         val newOverrides = settings.buttonOverrides.toMutableMap()
         newOverrides[buttonId] = newOverride
         onSettingsChange(settings.copy(buttonOverrides = newOverrides))
+        
+        // Reset accumulator
+        accumulatedOffsetX = 0f
+        accumulatedOffsetY = 0f
     }
 
-    // Update button scale
-    fun updateButtonScale(buttonId: String, deltaY: Float) {
+    // Save scale changes to settings
+    fun saveScale(buttonId: String) {
+        if (accumulatedScale == 0f) return
+        
         val currentOverride = settings.buttonOverrides[buttonId] ?: 
             TouchControllerSettingsManager.ButtonOverride()
         
         val currentScale = currentOverride.scale ?: settings.scale
-        // Make scaling more sensitive: 100px drag = 0.5x scale change
-        val scaleChange = -deltaY / 200f
-        val newScale = (currentScale + scaleChange).coerceIn(0.3f, 3.0f)
+        val newScale = (currentScale + accumulatedScale).coerceIn(0.3f, 3.0f)
         
         val newOverride = currentOverride.copy(scale = newScale)
         val newOverrides = settings.buttonOverrides.toMutableMap()
         newOverrides[buttonId] = newOverride
         onSettingsChange(settings.copy(buttonOverrides = newOverrides))
+        
+        // Reset accumulator
+        accumulatedScale = 0f
     }
 
     // Reset selected button
@@ -125,56 +124,76 @@ fun TouchControllerCustomizationOverlay(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Main gesture detection layer - MUST consume all events
+        // Main gesture detection layer
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f)) // Semi-transparent overlay
+                .background(Color.Black.copy(alpha = 0.3f))
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onLongPress = { offset ->
-                            // Long press to enter drag mode
                             val buttonId = findButtonAt(offset)
                             if (buttonId != null) {
                                 selectedButtonId = buttonId
                                 longPressDetected = true
-                                dragStartOffset = offset
                             }
                         },
                         onTap = { offset ->
-                            // Tap to select
-                            if (!isDragging) {
+                            if (!isDragging && !isResizing) {
                                 selectedButtonId = findButtonAt(offset)
                                 longPressDetected = false
+                                accumulatedOffsetX = 0f
+                                accumulatedOffsetY = 0f
+                                accumulatedScale = 0f
                             }
                         }
                     )
                 }
-                .pointerInput(selectedButtonId, longPressDetected) {
+                .pointerInput(selectedButtonId) {
                     detectDragGestures(
                         onDragStart = {
                             if (longPressDetected && selectedButtonId != null) {
                                 isDragging = true
+                                isResizing = false
+                            } else if (selectedButtonId != null) {
+                                isResizing = true
+                                isDragging = false
                             }
                         },
                         onDragEnd = {
+                            // Save accumulated changes on drag end
+                            selectedButtonId?.let { buttonId ->
+                                if (isDragging) {
+                                    savePosition(buttonId)
+                                } else if (isResizing) {
+                                    saveScale(buttonId)
+                                }
+                            }
                             isDragging = false
+                            isResizing = false
                             longPressDetected = false
                         },
                         onDragCancel = {
+                            // Reset on cancel
+                            accumulatedOffsetX = 0f
+                            accumulatedOffsetY = 0f
+                            accumulatedScale = 0f
                             isDragging = false
+                            isResizing = false
                             longPressDetected = false
                         }
                     ) { change, dragAmount ->
-                        change.consume() // CRITICAL: Consume all drag events
+                        change.consume()
                         
                         if (isDragging && selectedButtonId != null) {
-                            // Long press drag = move button
-                            updateButtonPosition(selectedButtonId!!, dragAmount)
-                        } else if (selectedButtonId != null && !longPressDetected) {
-                            // Regular drag on selected button = resize (vertical only)
+                            // Accumulate movement
+                            accumulatedOffsetX += dragAmount.x
+                            accumulatedOffsetY += dragAmount.y
+                        } else if (isResizing && selectedButtonId != null) {
+                            // Accumulate scale (vertical drag only)
                             if (abs(dragAmount.y) > abs(dragAmount.x)) {
-                                updateButtonScale(selectedButtonId!!, dragAmount.y)
+                                // 100px = 0.5x scale change
+                                accumulatedScale += -dragAmount.y / 200f
                             }
                         }
                     }
@@ -188,10 +207,10 @@ fun TouchControllerCustomizationOverlay(
                             addRect(rect)
                         }
                         
-                        // Draw dashed border around selected button
+                        // Draw dashed border
                         drawPath(
                             path = path,
-                            color = Color(0xFF00BCD4), // Cyan highlight
+                            color = Color(0xFF00BCD4),
                             style = Stroke(
                                 width = 4.dp.toPx(),
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f),
@@ -201,39 +220,27 @@ fun TouchControllerCustomizationOverlay(
                         
                         // Draw corner handles
                         val handleSize = 12.dp.toPx()
-                        val corners = listOf(
-                            rect.topLeft,
-                            rect.topRight,
-                            rect.bottomLeft,
-                            rect.bottomRight
-                        )
+                        val corners = listOf(rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight)
                         
                         corners.forEach { corner ->
-                            drawCircle(
-                                color = Color(0xFF00BCD4),
-                                radius = handleSize / 2,
-                                center = corner
-                            )
-                            drawCircle(
-                                color = Color.White,
-                                radius = (handleSize / 2) - 2.dp.toPx(),
-                                center = corner
-                            )
+                            drawCircle(color = Color(0xFF00BCD4), radius = handleSize / 2, center = corner)
+                            drawCircle(color = Color.White, radius = (handleSize / 2) - 2.dp.toPx(), center = corner)
                         }
                     }
                     
-                    // Show info text
+                    // Show info
                     val override = settings.buttonOverrides[buttonId]
                     val currentScale = override?.scale ?: settings.scale
+                    val displayScale = currentScale + accumulatedScale
                     
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 80.dp)
-                    ) {
+                    Box(modifier = Modifier.align(Alignment.TopCenter).padding(top = 80.dp)) {
                         Card {
                             Text(
-                                text = if (isDragging) "Moving..." else "Scale: ${String.format("%.2f", currentScale)}x\n${if (longPressDetected) "Release to place" else "Long press to move • Swipe ↕ to resize"}",
+                                text = when {
+                                    isDragging -> "Moving... (${String.format("%.0f", accumulatedOffsetX)}px, ${String.format("%.0f", accumulatedOffsetY)}px)"
+                                    isResizing -> "Resizing... ${String.format("%.2f", displayScale)}x"
+                                    else -> "Scale: ${String.format("%.2f", currentScale)}x\n${if (longPressDetected) "Drag to move" else "Long press to move • Drag to resize"}"
+                                },
                                 modifier = Modifier.padding(12.dp),
                                 fontSize = 14.sp,
                                 style = MaterialTheme.typography.bodyMedium
@@ -243,16 +250,12 @@ fun TouchControllerCustomizationOverlay(
                 }
             }
             
-            // Show hint if no button selected
+            // Show hint
             if (selectedButtonId == null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp)
-                ) {
+                Box(modifier = Modifier.align(Alignment.Center).padding(16.dp)) {
                     Card {
                         Text(
-                            text = "Tap any button to customize\n\nLong press + drag to move\nSwipe up/down to resize",
+                            text = "Tap any button to customize\n\nLong press + drag to move\nDrag up/down to resize",
                             modifier = Modifier.padding(16.dp),
                             fontSize = 16.sp,
                             style = MaterialTheme.typography.bodyLarge
@@ -271,9 +274,7 @@ fun TouchControllerCustomizationOverlay(
                 .padding(16.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
