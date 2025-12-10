@@ -42,3 +42,22 @@ jobs:
         with:
           name: app-debug
           path: lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
+
+      - name: Create Release
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          body: |
+            Automated build from commit ${{ github.sha }}
+            
+            **Branch:** ${{ github.ref_name }}
+            **Commit Message:** ${{ github.event.head_commit.message }}
+            
+            Download APK to install.
+          files: lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
