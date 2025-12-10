@@ -77,12 +77,14 @@ fun TouchControllerCustomizationOverlay(
         val currentOverride = settings.buttonOverrides[buttonId] ?: 
             TouchControllerSettingsManager.ButtonOverride()
         
-        val deltaX = toNormalizedX(dragAmount.x)
-        val deltaY = toNormalizedY(dragAmount.y)
+        // Convert drag pixels directly to normalized offset
+        // Screen width maps to -1.0 to 1.0, so divide by half width
+        val deltaX = dragAmount.x / (screenWidth / 2f)
+        val deltaY = dragAmount.y / (screenHeight / 2f)
         
         val newOverride = currentOverride.copy(
-            offsetX = (currentOverride.offsetX + deltaX).coerceIn(-1f, 1f),
-            offsetY = (currentOverride.offsetY + deltaY).coerceIn(-1f, 1f)
+            offsetX = (currentOverride.offsetX + deltaX).coerceIn(-2f, 2f),
+            offsetY = (currentOverride.offsetY + deltaY).coerceIn(-2f, 2f)
         )
         
         val newOverrides = settings.buttonOverrides.toMutableMap()
@@ -96,7 +98,8 @@ fun TouchControllerCustomizationOverlay(
             TouchControllerSettingsManager.ButtonOverride()
         
         val currentScale = currentOverride.scale ?: settings.scale
-        val scaleChange = -deltaY / screenHeight * 2f // Swipe up = positive change
+        // Make scaling more sensitive: 100px drag = 0.5x scale change
+        val scaleChange = -deltaY / 200f
         val newScale = (currentScale + scaleChange).coerceIn(0.3f, 3.0f)
         
         val newOverride = currentOverride.copy(scale = newScale)

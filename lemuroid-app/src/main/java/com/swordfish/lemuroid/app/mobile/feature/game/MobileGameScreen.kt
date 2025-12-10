@@ -222,22 +222,22 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                             touchControllerSettings = touchControllerSettings,
                             viewModel = viewModel,
                         )
-                        
-                        // Show customization overlay when in edit mode
-                        if (showEditControls.value && buttonBoundsTracker != null) {
-                            TouchControllerCustomizationOverlay(
-                                settings = touchControllerSettings,
-                                buttonBounds = buttonBoundsTracker.getBounds(),
-                                screenWidth = constraints.maxWidth,
-                                screenHeight = constraints.maxHeight,
-                                onSettingsChange = { viewModel.updateTouchControllerSettings(it) },
-                                onDone = { viewModel.showEditControls(false) },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
                     }
                 }
             }
+        }
+        
+        // Customization overlay MUST be outside PadKit to be on top
+        if (showEditControls.value && touchControllerSettings != null && buttonBoundsTracker != null) {
+            TouchControllerCustomizationOverlay(
+                settings = touchControllerSettings,
+                buttonBounds = buttonBoundsTracker.getBounds(),
+                screenWidth = constraints.maxWidth,
+                screenHeight = constraints.maxHeight,
+                onSettingsChange = { viewModel.updateTouchControllerSettings(it) },
+                onDone = { viewModel.showEditControls(false) },
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         val isLoading =
