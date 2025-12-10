@@ -122,10 +122,11 @@ fun TouchControllerCustomizationOverlay(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Main gesture detection layer
+        // Main gesture detection layer - MUST consume all events
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.3f)) // Semi-transparent overlay
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onLongPress = { offset ->
@@ -162,15 +163,15 @@ fun TouchControllerCustomizationOverlay(
                             longPressDetected = false
                         }
                     ) { change, dragAmount ->
+                        change.consume() // CRITICAL: Consume all drag events
+                        
                         if (isDragging && selectedButtonId != null) {
                             // Long press drag = move button
                             updateButtonPosition(selectedButtonId!!, dragAmount)
-                            change.consume()
                         } else if (selectedButtonId != null && !longPressDetected) {
                             // Regular drag on selected button = resize (vertical only)
                             if (abs(dragAmount.y) > abs(dragAmount.x)) {
                                 updateButtonScale(selectedButtonId!!, dragAmount.y)
-                                change.consume()
                             }
                         }
                     }

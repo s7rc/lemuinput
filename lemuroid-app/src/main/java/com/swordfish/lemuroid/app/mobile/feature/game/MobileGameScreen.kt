@@ -124,7 +124,12 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
 
         PadKit(
             modifier = Modifier.fillMaxSize(),
-            onInputEvents = { viewModel.handleVirtualInputEvent(it) },
+            onInputEvents = { 
+                // Disable input handling when in edit mode
+                if (!showEditControls.value) {
+                    viewModel.handleVirtualInputEvent(it)
+                }
+            },
             hapticFeedbackType = padHapticFeedback,
             simulatedState = tiltSimulatedStates,
             simulatedControlIds = tiltSimulatedControls,

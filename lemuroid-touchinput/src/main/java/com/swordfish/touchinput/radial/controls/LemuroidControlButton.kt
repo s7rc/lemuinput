@@ -12,6 +12,7 @@ import com.swordfish.touchinput.radial.customization.trackButtonBounds
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import com.swordfish.touchinput.radial.ui.LemuroidButtonForeground
 import com.swordfish.touchinput.radial.ui.LemuroidControlBackground
+import com.swordfish.touchinput.radial.utils.applyButtonOverride
 import com.swordfish.touchinput.radial.utils.getEffectiveScale
 import com.swordfish.touchinput.radial.utils.toButtonIdentifier
 import gg.padkit.PadKitScope
@@ -42,6 +43,7 @@ fun LemuroidControlButton(
     
     ControlButton(
         modifier = modifier
+            .applyButtonOverride(buttonId, settings) // Apply position offsets
             .padding(theme.padding)
             .scale(relativeScale)
             .trackButtonBounds(buttonId, boundsTracker),
